@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recovery Language Lab — Click‑Through Game</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
+      --accent:#22d3ee; --accent2:#a78bfa; --good:#34d399; --yellow:#facc15;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';
+      background:radial-gradient(1200px 800px at 20% -10%, #1f2937 0%, var(--bg) 60%); color:var(--text); display:flex; flex-direction:column;}
+    header{padding:16px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid #1f2937;
+      background:rgba(17,24,39,.6); backdrop-filter: blur(6px); position:sticky; top:0; z-index:10;}
+    .logo{font-weight:800; letter-spacing:.3px; display:flex; align-items:center; gap:10px}
+    .logo .badge{font-size:20px} .logo span{font-size:18px}
+    .controls{display:flex; gap:8px; align-items:center; flex:1; flex-wrap:wrap}
+    input, select, button{border-radius:12px; border:1px solid #334155; background:#0b1220; color:var(--text)}
+    input, select{padding:10px 12px; font-size:14px; min-width:180px} button{padding:10px 14px; font-weight:700; cursor:pointer}
+    button:hover{border-color:#475569} .pill{font-size:12px; padding:6px 10px; border-radius:999px; background:#0b1220; border:1px solid #334155; color:var(--muted)}
+    main{max-width:1100px; width:100%; margin:20px auto; padding:0 16px; display:grid; grid-template-columns: 320px 1fr; gap:16px}
+    @media (max-width: 900px){ main{grid-template-columns: 1fr} .side{order:2} .stage{order:1} }
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)); border:1px solid #1f2937; border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .side{padding:14px} .stage{padding:14px}
+    .list{max-height:70vh; overflow:auto; padding-right:6px}
+    .term{display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; cursor:pointer; border:1px solid transparent}
+    .term:hover{background:#0b1220; border-color:#1f2937}
+    .term.active{background:rgba(34,211,238,.08); border-color: rgba(34,211,238,.35)}
+    .term .icon{font-size:18px} .term .name{font-weight:700} .term .tag{margin-left:auto; font-size:12px; color:var(--muted)}
+    .stage-head{display:flex; align-items:center; justify-content:space-between; padding:8px 12px}
+    .stage-head .crumbs{font-size:13px; color:var(--muted)} .stage-head .step{font-weight:800; letter-spacing:.4px}
+    .card{background: radial-gradient(400px 200px at 10% 0%, rgba(167,139,250,.18), rgba(34,211,238,.1) 40%, rgba(255,255,255,.02) 70%);
+      border:1px solid #273449; border-radius:18px; padding:18px; margin:8px; min-height:260px; display:flex; flex-direction:column; gap:12px}
+    .card h2{margin:0; font-size:22px} .card p{margin:0; line-height:1.6; white-space:pre-line}
+    .bullets{display:grid; gap:8px; padding-left:18px} .footer{display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center; padding:8px 12px}
+    .btn{border:1px solid #334155; background:#0b1220; color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer}
+    .btn:disabled{opacity:.5; cursor:not-allowed} .btn.primary{background:linear-gradient(90deg, rgba(34,211,238,.25), rgba(167,139,250,.25)); border-color:#334155}
+    .chip{display:inline-flex; align-items:center; gap:8px; font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid #334155; background:#0b1220; color:#94a3b8}
+    .chip .dot{width:8px; height:8px; border-radius:50%} .dot-spirit{background:var(--accent2)} .dot-skill{background:var(--good)} .dot-process{background:var(--accent)} .dot-clinical{background:var(--yellow)}
+    .wrap{display:grid; gap:10px} .muted{color:var(--muted)}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:12px; padding:2px 6px; border:1px solid #334155; border-bottom-width:2px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="badge">🎯</span><span>Recovery Language Lab</span></div>
+    <div class="controls">
+      <input id="search" placeholder="Search a term (e.g., grace, PAWS, boundaries)" />
+      <select id="category">
+        <option value="all">All categories</option>
+        <option value="spiritual">Spiritual/Philosophical</option>
+        <option value="skill">Interpersonal/Skills</option>
+        <option value="process">Recovery Process</option>
+        <option value="clinical">Clinical/Therapeutic</option>
+      </select>
+      <button class="pill" id="shuffle">Shuffle</button>
+      <span class="pill">Keyboard: <span class="kbd">←</span>/<span class="kbd">→</span> steps • <span class="kbd">↑</span>/<span class="kbd">↓</span> terms</span>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel side">
+      <div class="search-row"><span class="count" id="count"></span></div>
+      <div class="list" id="list"></div>
+    </aside>
+
+    <section class="panel stage">
+      <div class="stage-head">
+        <div class="crumbs"><span id="crumbCat">–</span> • <span id="crumbName">Pick a term</span></div>
+        <div class="step" id="stepLabel">Step 1/4</div>
+      </div>
+
+      <div class="card" id="card">
+        <h2>Welcome 👋</h2>
+        <p class="muted">Pick a term on the left to start. Each term uses full-sentence, plain-language prompts:</p>
+        <div class="bullets">
+          <li><strong>Question</strong> — a complete, simple prompt.</li>
+          <li><strong>Definition</strong> — clear explanation from several angles.</li>
+          <li><strong>Discussion</strong> — open-ended questions in full sentences.</li>
+          <li><strong>Wrap‑Up & Try This</strong> — one reflection and one small action.</li>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="wrap">
+          <span class="chip"><span class="dot dot-spirit"></span> Spiritual</span>
+          <span class="chip"><span class="dot dot-skill"></span> Skills</span>
+          <span class="chip"><span class="dot dot-process"></span> Process</span>
+          <span class="chip"><span class="dot dot-clinical"></span> Clinical</span>
+        </div>
+        <div>
+          <button class="btn" id="prev" disabled>← Back</button>
+          <button class="btn primary" id="next" disabled>Next →</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const TERMS = [
+      /* Spiritual */
+      {name:"Grace",icon:"✨",category:"spiritual",steps:[
+        {type:"q",title:"What does Grace mean in recovery?",text:"In recovery, what does the word grace mean to you, and where have you seen it show up from others, from yourself, or from something bigger?"},
+        {type:"def",title:"Definition of Grace",text:"In the dictionary, grace is unearned favor or kindness that is not based on merit. In fellowship, grace is the space to be human while you grow and the chance to start again without being shamed. Clinically, grace is a stance that combines self‑compassion and accountability to reduce shame and support behavior change. In plain language, grace means you get to try again while still taking responsibility for your impact."},
+        {type:"disc",title:"Discussion Questions",bullets:["Can you describe a time when someone showed you grace and it helped you move forward?","What is the difference between showing grace and excusing harmful behavior?","When is it hardest for you to give yourself grace, and why?","How can grace and healthy boundaries exist together in the same situation?" ]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Identify one place where giving grace could interrupt a shame cycle this week.\nTry This: Write two sentences of self‑forgiveness and include one action you will take to repair or make progress."}
+      ]},
+      {name:"Acceptance",icon:"🫶",category:"spiritual",steps:[
+        {type:"q",title:"What does Acceptance mean?",text:"What facts are you fighting even though they are still true, and how might accepting them change your next step?"},
+        {type:"def",title:"Definition of Acceptance",text:"Acceptance means recognizing something as true or valid. In therapy approaches like ACT and DBT, acceptance means allowing thoughts and feelings to exist without avoidance while staying present. In fellowship, acceptance sounds like, “This is what it is today,” which is not approval but a commitment to reality on reality’s terms. In plain language, acceptance means you stop arguing with the weather so you can pack the right coat."},
+        {type:"disc",title:"Discussion Questions",bullets:["When has acceptance felt like defeat, and what changed your view?","What possibility opened up for you after accepting a hard truth?","What is one fact you can accept today even if you do not like it?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Where do you spend energy arguing with reality?\nTry This: Name one thing you cannot control and one thing you can. Take a three‑minute step on the thing you can control."}
+      ]},
+      {name:"Radical Acceptance",icon:"🌀",category:"spiritual",steps:[
+        {type:"q",title:"What does Radical Acceptance add?",text:"What would change if you accepted both the facts and your feelings about those facts completely?"},
+        {type:"def",title:"Definition of Radical Acceptance",text:"In DBT, radical acceptance means fully accepting something with your mind, body, and behavior, especially when it is painful. From a trauma‑informed perspective, it means acknowledging history and context without minimizing harm. In plain language, it means you stop fighting with what already happened so you can fight for what happens next."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where do you notice yourself half‑accepting something?","What helps your body follow your decision to accept?","How is radical acceptance different from giving up or giving in?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What pain are you doubling by refusing to accept it?\nTry This: Say aloud, “It happened. It was real. I did not deserve it. Now here is what I choose next,” and name one action."}
+      ]},
+      {name:"Surrender",icon:"🏳️",category:"spiritual",steps:[
+        {type:"q",title:"What do we mean by Surrender?",text:"When we talk about surrender in recovery, what are we inviting people to let go of?"},
+        {type:"def",title:"Definition of Surrender",text:"In fellowship, surrender means ending the losing battle of trying to control addiction alone and turning it over to something greater. Clinically, surrender is moving from ineffective control to effective strategies and supports. In plain language, surrender means dropping the rope in the tug‑of‑war so you can use both hands to climb."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where has forcing outcomes made a situation worse?","What became possible after you surrendered something important?","What do you fear you might lose if you surrender control?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Identify one rope you are still pulling on.\nTry This: Write one “I cannot do this alone” request and name the person, group, or Higher Power you will ask today."}
+      ]},
+      {name:"Serenity",icon:"🕊️",category:"spiritual",steps:[
+        {type:"q",title:"What does Serenity mean?",text:"Does serenity mean having no problems, or does it mean being calm within problems?"},
+        {type:"def",title:"Definition of Serenity",text:"In fellowship, serenity is the peace that follows acceptance and action. Clinically, serenity reflects a regulated nervous system and the ability to return to baseline after stress. In plain language, serenity means it is quiet inside even when it is loud outside."},
+        {type:"disc",title:"Discussion Questions",bullets:["What tends to take away your serenity the fastest?","What ritual or boundary best protects your serenity?","How does the Serenity Prayer guide your daily choices?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What is your top serenity priority today?\nTry This: Take three minutes to practice breathing or grounding before a stressful situation."}
+      ]},
+      {name:"Forgiveness",icon:"🫧",category:"spiritual",steps:[
+        {type:"q",title:"What is Forgiveness (and what is not)?",text:"How can we define forgiveness without excusing harm or forgetting what happened?"},
+        {type:"def",title:"Definition of Forgiveness",text:"In the dictionary, forgiveness is letting go of resentment or the desire for punishment. In recovery, forgiveness releases the burden so you can move forward while keeping boundaries. In plain language, forgiveness means you stop carrying the debt and still protect yourself."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where would forgiveness bring you the most freedom right now?","What is the difference between forgiveness and reconciliation in your life?","How can you forgive yourself while staying accountable for your actions?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which resentment feels heaviest today?\nTry This: Write a brief forgiveness statement and pair it with one healthy boundary."}
+      ]},
+      {name:"Resentment",icon:"🔥",category:"spiritual",steps:[
+        {type:"q",title:"What does Resentment mean?",text:"Is a resentment a feeling, a story you repeat, or both?"},
+        {type:"def",title:"Definition of Resentment",text:"In the dictionary, resentment is bitter indignation at being treated unfairly. In fellowship, untreated resentment is often called the number one relapse risk. Clinically, resentment is a reinforcing thought‑emotion loop that narrows options. In plain language, resentment is like holding a hot coal to throw later and burning yourself instead."},
+        {type:"disc",title:"Discussion Questions",bullets:["What payoff do you get from keeping a resentment alive?","What boundary or amends could reduce this resentment?","How can you release resentment safely even without contacting the other person?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which resentment drains you the most?\nTry This: Write a ten‑minute letter you will not send, then choose one boundary or repair you will actually do."}
+      ]},
+      {name:"Humility",icon:"🪨",category:"spiritual",steps:[
+        {type:"q",title:"What does Humility mean?",text:"How is humility different from humiliation, and how can humility help recovery?"},
+        {type:"def",title:"Definition of Humility",text:"In the dictionary, humility is a modest view of one’s importance. In recovery, humility right‑sizes the ego so help can get in. In plain language, humility means you are not less than or more than anyone else; you are a human being who is in progress."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where does pride block your recovery work?","Who models humble strength in a way you respect, and what do they do?","What feedback are you willing to hear this week, and how will you use it?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What would a humble action look like today?\nTry This: Ask one person for feedback and write down your takeaway in one sentence."}
+      ]},
+      {name:"Spiritual Awakening",icon:"🌤️",category:"spiritual",steps:[
+        {type:"q",title:"What is a Spiritual Awakening?",text:"How would you recognize a spiritual awakening in your life today?"},
+        {type:"def",title:"Definition of Spiritual Awakening",text:"In fellowship, a spiritual awakening is a shift in perspective that comes from working the steps. Personally, it often shows up as increased honesty, service, and peace. In plain language, a spiritual awakening means you see life with new eyes and begin to live like it."},
+        {type:"disc",title:"Discussion Questions",bullets:["What small awakenings have you noticed in your recovery so far?","How can you stay grounded so growth does not turn into grandiosity?","What daily practices help you stay spiritually awake?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Where are you being nudged to grow next?\nTry This: Do one simple act of service anonymously today."}
+      ]},
+      {name:"Powerlessness",icon:"🪶",category:"spiritual",steps:[
+        {type:"q",title:"What does Powerlessness mean here?",text:"Powerless over what—substances, people, or outcomes—and what becomes possible when you admit it?"},
+        {type:"def",title:"Definition of Powerlessness",text:"In fellowship, admitting powerlessness over addiction is the doorway to help. Clinically, recognizing control illusions helps you invest energy where it counts. In plain language, stop trying to steer what you cannot control and start steering what you can."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where do you keep grabbing the wheel?","What becomes possible after admitting powerlessness?","How do you pair powerlessness with responsibility for your actions?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What are you not the boss of today?\nTry This: Make two lists: “Not mine to control” and “Mine to do next,” then complete one action from the second list."}
+      ]},
+
+      /* Skills */
+      {name:"Boundaries",icon:"🛡️",category:"skill",steps:[
+        {type:"q",title:"What are Boundaries?",text:"When you hear the word boundaries, what do you think they actually are in practice?"},
+        {type:"def",title:"Definition of Boundaries",text:"A boundary is a line that marks a limit. Clinically, a boundary is a limit you set and communicate along with an action you will take if it is crossed. In plain language, a boundary is a promise about what you will and will not do, and what you will do next if the line is crossed."},
+        {type:"disc",title:"Discussion Questions",bullets:["What is one boundary you know you need but struggle to enforce, and why?","Where do you need to set a boundary with yourself to stay healthy?","How do boundaries support grace and connection rather than block them?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which relationship would benefit from a clear boundary?\nTry This: Script the boundary using, “If X happens, I will Y,” and practice saying it out loud."}
+      ]},
+      {name:"Integrity",icon:"🧱",category:"skill",steps:[
+        {type:"q",title:"What does Integrity look like?",text:"In recovery, what does it mean for your daily actions to match your values?"},
+        {type:"def",title:"Definition of Integrity",text:"In the dictionary, integrity means being whole and undivided and having strong moral principles. In recovery, integrity means your actions match your values even when no one is watching. In plain language, integrity means you are the same person on‑stage and off‑stage."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where do your actions and values fail to line up right now?","What tiny habit would close the gap between what you believe and what you do?","How does practicing integrity rebuild trust over time?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which value needs proof today?\nTry This: Take one five‑minute action that clearly shows that value in public or in private."}
+      ]},
+      {name:"Self‑Compassion",icon:"💗",category:"skill",steps:[
+        {type:"q",title:"What does Self‑Compassion mean?",text:"How is self‑compassion different from letting yourself off the hook, and how can it help you change?"},
+        {type:"def",title:"Definition of Self‑Compassion",text:"Clinically, self‑compassion includes mindful awareness of suffering, remembering that being human includes struggle, and speaking to yourself with kindness. In recovery, self‑compassion paired with accountability speeds growth. In plain language, self‑compassion means talking to yourself like someone you are responsible for helping."},
+        {type:"disc",title:"Discussion Questions",bullets:["When has being hard on yourself backfired and made change harder?","What words feel both kind and firm when you talk to yourself?","Who modeled healthy self‑compassion for you, and what did they do?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What would you say to a close friend in your situation?\nTry This: Write that sentence to yourself and read it twice today."}
+      ]},
+      {name:"Resilience",icon:"🌿",category:"skill",steps:[
+        {type:"q",title:"What is Resilience?",text:"Does resilience mean bouncing back, bouncing forward, or both in your experience?"},
+        {type:"def",title:"Definition of Resilience",text:"In psychology, resilience is adapting well in the face of adversity. In recovery, resilience builds through skills, supports, and meaning that reduce relapse risk. In plain language, resilience means you keep going and get a little stronger each time."},
+        {type:"disc",title:"Discussion Questions",bullets:["What past experiences prove your resilience to you?","Which supports boost your resilience the most?","How do you keep practicing aftercare when you feel fine so you stay strong?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which resilience muscle needs reps?\nTry This: Choose one protective routine—sleep, meals, movement, or connection—and commit to it for seven days."}
+      ]},
+      {name:"Accountability",icon:"📌",category:"skill",steps:[
+        {type:"q",title:"What does Accountability mean?",text:"When you hear the word accountability, who or what comes to mind?"},
+        {type:"def",title:"Definition of Accountability",text:"In the dictionary, accountability means being responsible for explaining your actions. In recovery, accountability means owning your choices and being willing to repair the harm they caused. In plain language, accountability means naming what happened, taking responsibility, making a repair, and learning from the experience."},
+        {type:"disc",title:"Discussion Questions",bullets:["When have you confused blame with accountability?","What would make accountability feel safer and more supportive for you?","How can you invite others to hold you accountable without feeling shame?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Think about a recent slip or mistake that could be a learning opportunity.\nTry This: Share one win and one lesson with a trusted support person within the next 24 hours."}
+      ]},
+      {name:"Willingness",icon:"🧨",category:"skill",steps:[
+        {type:"q",title:"What does Willingness mean?",text:"Does willingness mean waiting until you feel ready, or does it mean acting even when you do not feel ready?"},
+        {type:"def",title:"Definition of Willingness",text:"In therapy, willingness means being open to trying new behaviors even when they are uncomfortable. In fellowship, willingness often means having the energy to do the next right thing. In plain language, willingness means showing up and acting, even when you do not feel like it."},
+        {type:"disc",title:"Discussion Questions",bullets:["What helps you act your way into feeling ready?","What is one area where you are willing to try even if you feel uncomfortable?","What small risk could you take today that might build momentum?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Where are you waiting to feel ready?\nTry This: Take five minutes today to do one small task you have been avoiding as a way to practice willingness."}
+      ]},
+
+      /* Process */
+      {name:"Sobriety",icon:"🧭",category:"process",steps:[
+        {type:"q",title:"What does Sobriety include for you?",text:"When you hear the word sobriety, what do you think it includes beyond simply not using?"},
+        {type:"def",title:"Definition of Sobriety",text:"In the dictionary, sobriety is the state of not being intoxicated. In many fellowships, sobriety means abstinence from mood‑altering substances as defined by the program. Clinically, sobriety may include reducing or stopping use in a way aligned with personal treatment goals, including harm‑reduction steps. In plain language, sobriety means having a clear brain so you can make clear choices."},
+        {type:"disc",title:"Discussion Questions",bullets:["How do you personally define your sobriety line?","Where do gray areas, such as prescriptions, need clarity for you?","What behaviors—not just substances—threaten your sobriety?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What is your working definition today?\nTry This: Write three short “sobriety rules” you will live by this week."}
+      ]},
+      {name:"Recovery",icon:"🌱",category:"process",steps:[
+        {type:"q",title:"What does Recovery mean beyond sobriety?",text:"If sobriety is what you subtract, what are you adding to your life to build recovery?"},
+        {type:"def",title:"Definition of Recovery",text:"SAMHSA describes recovery as a process of change through which people improve their health, live self‑directed lives, and strive to reach their potential. In fellowship, recovery is often called a new way of life. In plain language, recovery is building a life that makes the old life less tempting."},
+        {type:"disc",title:"Discussion Questions",bullets:["Which pillar—health, home, purpose, or community—is currently strongest and which needs attention?","How does your identity shift from “not using” to “growing” over time?","What is one joy or interest you are building into your new life?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which pillar needs attention now?\nTry This: Spend ten minutes on the next right step that strengthens that pillar."}
+      ]},
+      {name:"Inventory",icon:"📒",category:"process",steps:[
+        {type:"q",title:"What belongs in an Inventory?",text:"When you take an inventory, what do you include and why does that help?"},
+        {type:"def",title:"Definition of Inventory",text:"In fellowship, an inventory is an honest written look at resentments, fears, harms, and assets. Clinically, it is a structured way to monitor triggers, beliefs, and behaviors. In plain language, an inventory is a receipts check of your life so you can budget your energy better."},
+        {type:"disc",title:"Discussion Questions",bullets:["What helps you write truthfully without sliding into shame?","How do you balance noticing assets alongside liabilities?","What pattern keeps showing up across different situations for you?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What theme surprised you in a past inventory?\nTry This: Do a five‑line daily inventory tonight: one resentment, one fear, one joy, one strength you used, and one repair you can make."}
+      ]},
+      {name:"Amends",icon:"🧷",category:"process",steps:[
+        {type:"q",title:"What is the difference between Amends and an apology?",text:"How do you tell when it is time to make amends and when it might cause harm?"},
+        {type:"def",title:"Definition of Amends",text:"In fellowship, amends means repairing harm directly whenever possible, except when doing so would injure others. Clinically, it is accountability with behavior change and appropriate boundaries. In plain language, amends means not just saying “I am sorry,” but showing change and repair through action."},
+        {type:"disc",title:"Discussion Questions",bullets:["When might making amends too soon cause more harm?","What does living amends look like in daily routines?","How can you make amends safely when direct contact is not possible?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which amends should wait and which could begin safely?\nTry This: Choose one daily action that represents a living amends and practice it for seven days."}
+      ]},
+      {name:"Sponsor / Sponsorship",icon:"🧑‍🤝‍🧑",category:"process",steps:[
+        {type:"q",title:"What does a Sponsor do in practice?",text:"What do you need from a sponsor and what do they need from you to make the relationship work?"},
+        {type:"def",title:"Definition of Sponsor",text:"In fellowship, a sponsor is a peer guide who shares experience, strength, and hope and helps you work the steps. Clinically, sponsorship provides accountability, modeling, and a safe attachment relationship. In plain language, a sponsor is a trail guide who has hiked your route before."},
+        {type:"disc",title:"Discussion Questions",bullets:["What qualities do you want in a sponsor and why?","How will you be sponsor‑able—reachable, honest, and willing?","What boundaries will keep the sponsorship healthy and effective?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What is the next step you need with sponsorship?\nTry This: Send one text or make one call to a sponsor or potential sponsor today."}
+      ]},
+      {name:"Fellowship",icon:"🤝",category:"process",steps:[
+        {type:"q",title:"What is Fellowship in recovery?",text:"What do you receive from the recovery community that you cannot get by yourself?"},
+        {type:"def",title:"Definition of Fellowship",text:"In fellowship, community offers shared experience, strength, and hope and creates belonging that heals isolation. Clinically, social recovery capital—your people and connections—supports sustained change. In plain language, fellowship means people who “get it” and walk with you."},
+        {type:"disc",title:"Discussion Questions",bullets:["What do you need most from fellowship right now?","How will you contribute—through service, sharing, or welcoming newcomers?","What boundary helps you keep fellowship healthy for yourself?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Where can you lean on people more this week?\nTry This: Commit to one extra meeting or one peer call in the next seven days."}
+      ]},
+
+      /* Clinical */
+      {name:"Triggers",icon:"🚨",category:"clinical",steps:[
+        {type:"q",title:"What are Triggers really doing?",text:"When you say you are triggered, what is happening inside and around you?"},
+        {type:"def",title:"Definition of Triggers",text:"Clinically, triggers are cues—people, places, things, or emotions—that increase cravings or old responses. In the brain, they are learned associations that fire quickly but can be retrained with new pairings. In plain language, a trigger is a tripwire that sets off a habit loop."},
+        {type:"disc",title:"Discussion Questions",bullets:["Which triggers are avoidable and which will you train through?","What body signals show up first when you are triggered?","What “if‑then” plan can you make for your hottest trigger?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which trigger deserves rehearsal?\nTry This: Write an if‑then plan: “If I feel X at Y, then I will Z,” and practice it once this week."}
+      ]},
+      {name:"Cravings",icon:"🌊",category:"clinical",steps:[
+        {type:"q",title:"What are Cravings?",text:"How do cravings feel to you, and how long do they usually last?"},
+        {type:"def",title:"Definition of Cravings",text:"Clinically, a craving is an urge to use a substance and its intensity varies. Cravings often peak and then fall within a few minutes. Helpful skills include riding the wave, delaying, distracting, defusing thoughts, and reaching out to others. In plain language, a craving is a strong wave—you can let it pass without chasing it."},
+        {type:"disc",title:"Discussion Questions",bullets:["What does the craving cycle usually look like for you?","Which skill has helped you ride out a craving?","Who could you reach out to when a craving feels overwhelming?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which craving skill do you practice least?\nTry This: Do a two‑minute urge‑surf—notice the urge, set a timer, breathe, and track the rise and fall."}
+      ]},
+      {name:"PAWS",icon:"🧩",category:"clinical",steps:[
+        {type:"q",title:"What does PAWS mean?",text:"What symptoms continue even after the detox period is over?"},
+        {type:"def",title:"Definition of PAWS",text:"PAWS stands for Post‑Acute Withdrawal Syndrome. It includes mood changes, sleep problems, and concentration issues that can last for weeks or months. In recovery, it helps to normalize these symptoms and build routines that protect your foundation. In plain language, PAWS means your brain is still healing—treat yourself like you are in recovery physical therapy."},
+        {type:"disc",title:"Discussion Questions",bullets:["Which PAWS symptoms have you experienced?","What daily routines like sleep, food, or movement help the most?","How would you explain PAWS to family or coworkers so they can support you?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: Which PAWS symptom affects you most right now?\nTry This: Choose one anchor—bedtime alarm, breakfast, or a short daily walk—and do it for seven days."}
+      ]},
+      {name:"Harm Reduction",icon:"🛟",category:"clinical",steps:[
+        {type:"q",title:"What does Harm Reduction mean?",text:"Does harm reduction mean giving up, or can it be a step toward safety and change?"},
+        {type:"def",title:"Definition of Harm Reduction",text:"In public health, harm reduction means strategies that reduce negative consequences of use without requiring immediate abstinence. Clinically, it is a collaborative, person‑centered path that can include eventual abstinence. In plain language, harm reduction means fewer scars while you build capacity to change."},
+        {type:"disc",title:"Discussion Questions",bullets:["Where could harm reduction fit in your plan?","What boundary makes harm‑reduction steps safe for you?","How can we talk about harm reduction clearly without mixed messages?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What safer next step could protect you now?\nTry This: Write one concrete harm‑reduction action for your next high‑risk situation."}
+      ]},
+      {name:"Neuroplasticity",icon:"🧠",category:"clinical",steps:[
+        {type:"q",title:"What is Neuroplasticity doing for you?",text:"How does the idea that your brain can change shape your hope and habits?"},
+        {type:"def",title:"Definition of Neuroplasticity",text:"Neuroscience shows the brain can reorganize through new learning. In recovery, repeating skills and supports rewires cues and responses. In plain language, what you practice, you wire."},
+        {type:"disc",title:"Discussion Questions",bullets:["What habit loop are you retraining right now?","Which cue → new response will you rehearse this week?","How will you measure small “brain‑change” wins?"]},
+        {type:"wrap",title:"Wrap‑Up and Try This",text:"Reflection: What micro‑practice do you want to install?\nTry This: Do a one‑minute repetition at the same time and place every day for seven days."}
+      ]}
+    ];
+
+    /* ---------- App logic ---------- */
+    let filtered = [...TERMS];
+    let activeIndex = -1;
+    let step = 0;
+    const listEl = document.getElementById('list');
+    const countEl = document.getElementById('count');
+    const searchEl = document.getElementById('search');
+    const categoryEl = document.getElementById('category');
+    const shuffleEl = document.getElementById('shuffle');
+    const cardEl = document.getElementById('card');
+    const crumbCat = document.getElementById('crumbCat');
+    const crumbName = document.getElementById('crumbName');
+    const stepLabel = document.getElementById('stepLabel');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+
+    function tagLabel(cat){ return ({spiritual:'Spiritual',skill:'Skills',process:'Process',clinical:'Clinical'})[cat]||''; }
+
+    function renderList(){
+      listEl.innerHTML='';
+      filtered.forEach((t,i)=>{
+        const row=document.createElement('div');
+        row.className='term'+(i===activeIndex?' active':'');
+        row.onclick=()=>selectTerm(i);
+        row.innerHTML = '<div class=\"icon\">'+t.icon+'</div><div class=\"name\">'+t.name+'</div><div class=\"tag muted\">'+tagLabel(t.category)+'</div>';
+        listEl.appendChild(row);
+      });
+      countEl.textContent=`${filtered.length} terms`;
+    }
+
+    function selectTerm(i){ activeIndex=i; step=0; renderList(); renderStage(); prevBtn.disabled=true; nextBtn.disabled=false; }
+
+    function renderStage(){
+      if(activeIndex<0) return;
+      const t=filtered[activeIndex]; const s=t.steps[step];
+      crumbCat.textContent=tagLabel(t.category); crumbName.textContent=t.name; stepLabel.textContent=`Step ${step+1}/4`;
+      cardEl.innerHTML='';
+      const h2=document.createElement('h2'); h2.textContent=`${t.icon} ${s.title}`;
+      cardEl.appendChild(h2);
+      if(s.type==='disc'){
+        const ul=document.createElement('div'); ul.className='bullets';
+        s.bullets.forEach(b=>{ const li=document.createElement('li'); li.textContent=b; ul.appendChild(li); });
+        cardEl.appendChild(ul);
+        const p=document.createElement('p'); p.className='muted'; p.textContent='Discuss as a group or pick one prompt to journal for two minutes.'; cardEl.appendChild(p);
+      } else {
+        const p=document.createElement('p'); p.textContent=s.text; cardEl.appendChild(p);
+      }
+    }
+
+    function next(){ if(activeIndex<0) return; step=Math.min(3, step+1); renderStage(); prevBtn.disabled=(step===0); nextBtn.disabled=(step===3); }
+    function prev(){ if(activeIndex<0) return; step=Math.max(0, step-1); renderStage(); prevBtn.disabled=(step===0); nextBtn.disabled=(step===3); }
+
+    function applyFilters(){
+      const q=searchEl.value.trim().toLowerCase(); const cat=categoryEl.value;
+      filtered = TERMS.filter(t=>{
+        const hit = t.name.toLowerCase().includes(q) || t.steps.some(s => (s.text||'').toLowerCase().includes(q));
+        const catOk = (cat==='all') || (t.category===cat);
+        return hit && catOk;
+      });
+      activeIndex = filtered.length? 0 : -1; step=0; renderList();
+      if(activeIndex>=0){ renderStage(); prevBtn.disabled=true; nextBtn.disabled=false; }
+      else { cardEl.innerHTML='<h2>Nothing found</h2><p class=\"muted\">Try a different search or clear filters.</p>'; crumbCat.textContent='–'; crumbName.textContent='No match'; stepLabel.textContent='—'; prevBtn.disabled=true; nextBtn.disabled=true; }
+    }
+
+    function shuffle(){
+      for(let i=filtered.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [filtered[i],filtered[j]]=[filtered[j],filtered[i]]; }
+      activeIndex = filtered.length? 0 : -1; step=0; renderList(); if(activeIndex>=0){ renderStage(); prevBtn.disabled=true; nextBtn.disabled=false; }
+    }
+
+    window.addEventListener('keydown', (e)=>{
+      if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+      if(e.key==='ArrowRight') next();
+      if(e.key==='ArrowLeft') prev();
+      if(e.key==='ArrowUp' && activeIndex>0) selectTerm(activeIndex-1);
+      if(e.key==='ArrowDown' && activeIndex<filtered.length-1) selectTerm(activeIndex+1);
+    });
+
+    searchEl.addEventListener('input', applyFilters);
+    categoryEl.addEventListener('change', applyFilters);
+    shuffleEl.addEventListener('click', shuffle);
+    nextBtn.addEventListener('click', next);
+    prevBtn.addEventListener('click', prev);
+
+    renderList();
+  </script>
+</body>
+</html>
