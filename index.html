@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recovery Language Lab — Click‑Through Game</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
+      --accent:#22d3ee; --accent2:#a78bfa; --good:#34d399; --warn:#fb7185; --yellow:#facc15;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';
+      background:radial-gradient(1200px 800px at 20% -10%, #1f2937 0%, var(--bg) 60%); color:var(--text); display:flex; flex-direction:column;}
+    header{padding:16px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid #1f2937;
+      background:rgba(17,24,39,.6); backdrop-filter: blur(6px); position:sticky; top:0; z-index:10;}
+    .logo{font-weight:800; letter-spacing:.3px; display:flex; align-items:center; gap:10px}
+    .logo .badge{font-size:20px} .logo span{font-size:18px}
+    .controls{display:flex; gap:8px; align-items:center; flex:1; flex-wrap:wrap}
+    input, select, button{border-radius:12px; border:1px solid #334155; background:#0b1220; color:var(--text)}
+    input, select{padding:10px 12px; font-size:14px; min-width:180px} button{padding:10px 14px; font-weight:700; cursor:pointer}
+    button:hover{border-color:#475569} .pill{font-size:12px; padding:6px 10px; border-radius:999px; background:#0b1220; border:1px solid #334155; color:var(--muted)}
+    main{max-width:1100px; width:100%; margin:20px auto; padding:0 16px; display:grid; grid-template-columns: 320px 1fr; gap:16px}
+    @media (max-width: 900px){ main{grid-template-columns: 1fr} .side{order:2} .stage{order:1} }
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)); border:1px solid #1f2937; border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .side{padding:14px} .stage{padding:14px}
+    .list{max-height:70vh; overflow:auto; padding-right:6px}
+    .term{display:flex; align-items:center; gap:10px; padding:10px; border-radius:12px; cursor:pointer; border:1px solid transparent}
+    .term:hover{background:#0b1220; border-color:#1f2937}
+    .term.active{background:rgba(34,211,238,.08); border-color: rgba(34,211,238,.35)}
+    .term .icon{font-size:18px} .term .name{font-weight:700} .term .tag{margin-left:auto; font-size:12px; color:var(--muted)}
+    .stage-head{display:flex; align-items:center; justify-content:space-between; padding:8px 12px}
+    .stage-head .crumbs{font-size:13px; color:var(--muted)} .stage-head .step{font-weight:800; letter-spacing:.4px}
+    .card{background: radial-gradient(400px 200px at 10% 0%, rgba(167,139,250,.18), rgba(34,211,238,.1) 40%, rgba(255,255,255,.02) 70%);
+      border:1px solid #273449; border-radius:18px; padding:18px; margin:8px; min-height:240px; display:flex; flex-direction:column; gap:12px}
+    .card h2{margin:0; font-size:22px} .card p{margin:0; line-height:1.6}
+    .bullets{display:grid; gap:8px; padding-left:18px} .footer{display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center; padding:8px 12px}
+    .btn{border:1px solid #334155; background:#0b1220; color:#e5e7eb; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer}
+    .btn:disabled{opacity:.5; cursor:not-allowed} .btn.primary{background:linear-gradient(90deg, rgba(34,211,238,.25), rgba(167,139,250,.25)); border-color:#334155}
+    .chip{display:inline-flex; align-items:center; gap:8px; font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid #334155; background:#0b1220; color:var(--muted)}
+    .chip .dot{width:8px; height:8px; border-radius:50%} .dot-spirit{background:var(--accent2)} .dot-skill{background:var(--good)} .dot-process{background:var(--accent)} .dot-clinical{background:var(--yellow)}
+    .wrap{display:grid; gap:10px} .muted{color:var(--muted)}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace; font-size:12px; padding:2px 6px; border:1px solid #334155; border-bottom-width:2px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="badge">🎯</span><span>Recovery Language Lab</span></div>
+    <div class="controls">
+      <input id="search" placeholder="Search a term (e.g., grace, PAWS, boundaries)" />
+      <select id="category">
+        <option value="all">All categories</option>
+        <option value="spiritual">Spiritual/Philosophical</option>
+        <option value="skill">Interpersonal/Skills</option>
+        <option value="process">Recovery Process</option>
+        <option value="clinical">Clinical/Therapeutic</option>
+      </select>
+      <button class="pill" id="shuffle">Shuffle</button>
+      <span class="pill">Keyboard: <span class="kbd">←</span>/<span class="kbd">→</span> steps • <span class="kbd">↑</span>/<span class="kbd">↓</span> terms</span>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel side">
+      <div class="search-row">
+        <span class="count" id="count"></span>
+      </div>
+      <div class="list" id="list"></div>
+    </aside>
+
+    <section class="panel stage">
+      <div class="stage-head">
+        <div class="crumbs"><span id="crumbCat">–</span> • <span id="crumbName">Pick a term</span></div>
+        <div class="step" id="stepLabel">Step 1/4</div>
+      </div>
+
+      <div class="card" id="card">
+        <h2>Welcome 👋</h2>
+        <p class="muted">Pick a term on the left to start. Each term has four click‑through steps:</p>
+        <div class="bullets">
+          <li><strong>Question</strong> — simple prompt that surfaces assumptions.</li>
+          <li><strong>Definition</strong> — multi‑angle (dictionary / clinical / fellowship / plain‑language).</li>
+          <li><strong>Discussion</strong> — 3–5 open prompts.</li>
+          <li><strong>Wrap‑Up & Try This</strong> — 1 reflection + 1 tiny action.</li>
+        </div>
+        <p class="muted">Use the search box to jump to any word. Great for TV display in group.</p>
+      </div>
+
+      <div class="footer">
+        <div class="wrap">
+          <span class="chip"><span class="dot dot-spirit"></span> Spiritual</span>
+          <span class="chip"><span class="dot dot-skill"></span> Skills</span>
+          <span class="chip"><span class="dot dot-process"></span> Process</span>
+          <span class="chip"><span class="dot dot-clinical"></span> Clinical</span>
+        </div>
+        <div>
+          <button class="btn" id="prev" disabled>← Back</button>
+          <button class="btn primary" id="next" disabled>Next →</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ----- TERMS DATA (expanded set) -----
+    const TERMS = [
+      {name:"Grace",icon:"✨",category:"spiritual",steps:[
+        {type:"q",title:"What does Grace mean in recovery?",text:"Where does grace show up for you — from others, from yourself, or from something bigger?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: unearned favor; kindness not based on merit.\n• Fellowship: space to be human while you grow; a restart without the lecture.\n• Clinical: a stance that reduces shame and supports behavior change (self‑compassion + accountability).\n• Plain‑language: you get to try again — and still own your impact."},
+        {type:"disc",title:"Discuss",bullets:["When did grace from someone else help you move forward?","What’s the difference between grace and excusing harm?","Where do you resist giving yourself grace?","How can grace and boundaries coexist?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Where could grace break a shame cycle this week?\nTry This: Write a 2‑sentence self‑forgiveness that also names one repair action."}
+      ]},
+      {name:"Acceptance",icon:"🫶",category:"spiritual",steps:[
+        {type:"q",title:"What is Acceptance?",text:"What facts am I fighting that are still true?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: receiving or regarding something as true/valid.\n• Clinical (ACT/DBT): allowing internal experience without avoidance; contact with the present moment.\n• Fellowship: 'This is what it is today' — not approval, but reality on reality’s terms.\n• Plain‑language: stop arguing with the weather so you can pack the right coat."},
+        {type:"disc",title:"Discuss",bullets:["Where does acceptance feel like defeat?","What action became possible after acceptance?","What’s one fact you can accept today without liking it?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What energy do I waste on arguing with reality?\nTry This: Name one uncontrollable, one controllable, and take a 3‑minute step on the controllable."}
+      ]},
+      {name:"Radical Acceptance",icon:"🌀",category:"spiritual",steps:[
+        {type:"q",title:"Radical… how?",text:"What changes if I fully accept the facts *and* my feelings about them?"},
+        {type:"def",title:"Multi‑angle definition",text:"• DBT: completely accepting with mind, body, behavior — especially the painful parts.\n• Trauma‑informed: acknowledging history and context without minimizing harm.\n• Plain‑language: I stop the fight with what already happened so I can fight for what happens next."},
+        {type:"disc",title:"Discuss",bullets:["Where do you get stuck half‑accepting?","What helps your body follow your decision to accept?","How is radical acceptance different from giving up?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What pain are you doubling by refusing to accept?\nTry This: Say out loud: ‘It happened. It was real. I didn’t deserve it. Now here’s what I choose next…’ and name one step."}
+      ]},
+      {name:"Surrender",icon:"🏳️",category:"spiritual",steps:[
+        {type:"q",title:"What do we surrender?",text:"Control? Outcomes? The illusion that willpower alone can fix it?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: stop self‑directing the losing battle; turn it over.\n• Clinical: moving from ineffective control to effective strategies/supports.\n• Plain‑language: drop the rope so you can use both hands to climb."},
+        {type:"disc",title:"Discuss",bullets:["Where has forcing made things worse?","What supports become possible after surrender?","What do you fear surrender will take from you?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What rope are you still tug‑of‑warring?\nTry This: Write one ‘I can’t do this alone’ ask you’ll make today (person, group, or Higher Power)."}
+      ]},
+      {name:"Sobriety",icon:"🧭",category:"process",steps:[
+        {type:"q",title:"What counts as Sobriety?",text:"Is it only abstinence from your main substance, or broader?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: the state of not being intoxicated.\n• Fellowship: abstinence from all mood‑altering substances as defined by your program.\n• Clinical: measurable reduction/cessation of use aligned with goals (may include harm‑reduction steps).\n• Plain‑language: clear brain, clear choices."},
+        {type:"disc",title:"Discuss",bullets:["How do you define your sobriety line?","Where do gray areas (e.g., prescriptions) need clarity?","What behaviors (not just substances) threaten your sobriety?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What is *your* working definition today?\nTry This: Write 3 bullet ‘sobriety rules’ you’ll live by this week."}
+      ]},
+      {name:"Recovery",icon:"🌱",category:"process",steps:[
+        {type:"q",title:"What is Recovery beyond sobriety?",text:"If sobriety is subtraction, what are you adding?"},
+        {type:"def",title:"Multi‑angle definition",text:"• SAMHSA‑style: a process of change where people improve health, live self‑directed lives, and strive to reach potential.\n• Fellowship: a new way of life.\n• Plain‑language: building a life that makes the old life less tempting."},
+        {type:"disc",title:"Discuss",bullets:["What pillars (health, home, purpose, community) are strongest/weakest?","How does your identity shift from ‘not using’ to ‘growing’?","What’s one joy you’re building on purpose?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Which pillar needs attention?\nTry This: 10‑minute ‘next right thing’ toward that pillar today."}
+      ]},
+      {name:"Inventory",icon:"📒",category:"process",steps:[
+        {type:"q",title:"Inventory of what?",text:"Morals, fears, resentments, harms, patterns — where do you start?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: written, honest look at self — assets and liabilities.\n• Clinical: structured self‑monitoring to identify triggers, beliefs, behaviors.\n• Plain‑language: a receipts check of your life so you can budget better."},
+        {type:"disc",title:"Discuss",bullets:["What helps you write without spiraling into shame?","How do you balance assets with liabilities?","What pattern keeps showing up across situations?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What theme surprised you?\nTry This: Do a 5‑line ‘daily inventory’ tonight: one resentment, one fear, one joy, one asset used, one repair to make."}
+      ]},
+      {name:"Amends",icon:"🧷",category:"process",steps:[
+        {type:"q",title:"Amends vs Apology?",text:"What’s the difference in recovery practice?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: direct repair where possible, except when it injures others.\n• Clinical: accountability with behavior change and boundaries.\n• Plain‑language: not ‘I’m sorry,’ but ‘Here’s how I’m changing and repairing.’"},
+        {type:"disc",title:"Discuss",bullets:["Where would amends cause harm if rushed?","What does living amends look like day‑to‑day?","How do you accept a ‘no contact’ boundary while still making amends?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Which amends belongs later, not now?\nTry This: Draft a living‑amends habit you can practice for 7 days."}
+      ]},
+      {name:"Boundaries",icon:"🛡️",category:"skill",steps:[
+        {type:"q",title:"What is a Boundary?",text:"Is it a rule for them or a promise about your own behavior?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: a line that marks limits.\n• Clinical: a communicated limit plus consequence you control.\n• Plain‑language: what I will and won’t do — and what happens next if the line’s crossed."},
+        {type:"disc",title:"Discuss",bullets:["What boundary sounds good but you can’t enforce?","Where do you need a *self* boundary?","How do boundaries support, not sabotage, grace?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Which relationship needs one clear boundary?\nTry This: Script it: ‘If X happens, I will Y’ — and practice out loud."}
+      ]},
+      {name:"Accountability",icon:"📌",category:"skill",steps:[
+        {type:"q",title:"Accountability to whom?",text:"Self, others, program, values?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: obligation to report/explain actions.\n• Recovery: ownership of choices + willingness to repair.\n• Plain‑language: I name it, own it, fix it, and learn from it."},
+        {type:"disc",title:"Discuss",bullets:["Where do you confuse blame with accountability?","What makes accountability safer for you?","How do you invite accountability partners without shame?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What recent slip could teach you something?\nTry This: 24‑hour check‑in text to a support with one win + one lesson."}
+      ]},
+      {name:"Willingness",icon:"🧨",category:"skill",steps:[
+        {type:"q",title:"What is Willingness?",text:"Feeling ready or acting ready?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Therapeutic: openness to try new behaviors despite discomfort.\n• Fellowship: ‘do the next right thing’ energy.\n• Plain‑language: show up, even when you don’t feel like it."},
+        {type:"disc",title:"Discuss",bullets:["What helps you act your way into feeling?","Where are you willing to try even if it's uncomfortable?","What small risk could build momentum today?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Where are you waiting to ‘feel ready’?\nTry This: 5‑minute willingness rep on a tiny task you’ve avoided."}
+      ]},
+      {name:"Triggers",icon:"🚨",category:"clinical",steps:[
+        {type:"q",title:"What triggers what?",text:"External cues, internal states, or both?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Clinical: cues (people/places/things/emotions) that increase craving/old responses.\n• Brain: learned associations that fire fast; can be rewired with new pairings.\n• Plain‑language: tripwires that set off habits."},
+        {type:"disc",title:"Discuss",bullets:["Which triggers are avoidable vs to be trained through?","What body signals show up first?","What ‘if‑then’ plan will you use for a hot trigger?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Which trigger deserves a rehearsal?\nTry This: Write an if‑then plan: ‘If I feel X at Y, then I will Z.’"}
+      ]},
+      {name:"Cravings",icon:"🌊",category:"clinical",steps:[
+        {type:"q",title:"Craving = command?",text:"How long do cravings really last for you?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Clinical: urge to use; intensity varies; often peaks and falls within minutes.\n• Skills: urge surfing, delay, distract, defuse, connect.\n• Plain‑language: a strong wave — ride it, don’t chase it."},
+        {type:"disc",title:"Discuss",bullets:["What’s your average craving arc?","Which skills helped last time?","Who will you text on a 7/10 craving?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Which urge skill is under‑practiced?\nTry This: 2‑minute urge‑surf practice today on a mild urge (breath count + timer)."}
+      ]},
+      {name:"PAWS",icon:"🧩",category:"clinical",steps:[
+        {type:"q",title:"What is PAWS?",text:"What symptoms linger after detox?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Clinical: Post‑Acute Withdrawal Syndrome — mood, sleep, cognition changes that persist weeks–months.\n• Recovery: normalize, pace, and protect your foundation.\n• Plain‑language: your brain is rebooting; treat it like recovery PT."},
+        {type:"disc",title:"Discuss",bullets:["Which PAWS symptoms show up for you?","What rhythms (sleep, food, movement) help most?","How do you explain PAWS to family/work?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Where do you need more structure while PAWS fades?\nTry This: Commit to one anchor (bedtime alarm, breakfast, or 10‑min walk) for 7 days."}
+      ]},
+      {name:"Harm Reduction",icon:"🛟",category:"clinical",steps:[
+        {type:"q",title:"Harm reduction = giving up?",text:"Or a step toward safety and change?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Public health: strategies that reduce negative consequences without requiring immediate abstinence.\n• Clinical: a collaborative, person‑centered path that can include eventual abstinence.\n• Plain‑language: fewer scars while you build capacity."},
+        {type:"disc",title:"Discuss",bullets:["Where does harm reduction fit (or not) in your plan?","What’s one boundary that makes harm‑reduction *safe*?","How do we talk about it without mixed messages?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What ‘safer next step’ could protect you now?\nTry This: Write one concrete harm‑reduction action for the next high‑risk situation."}
+      ]},
+      {name:"Self‑Compassion",icon:"💗",category:"skill",steps:[
+        {type:"q",title:"Self‑compassion = excuse?",text:"How is it different from letting yourself off the hook?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Clinical: mindful awareness + common humanity + kindness toward self.\n• Recovery: warmth + accountability accelerates change.\n• Plain‑language: talk to yourself like someone you’re responsible for helping."},
+        {type:"disc",title:"Discuss",bullets:["Where does harshness backfire for you?","What language feels kind *and* firm?","Who modeled self‑compassion well in your life?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What would you say to a friend in your shoes?\nTry This: Write that sentence to yourself and read it twice today."}
+      ]},
+      {name:"Resentment",icon:"🔥",category:"spiritual",steps:[
+        {type:"q",title:"What is a Resentment?",text:"Is it anger, a story, a grievance file — or all three?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: bitter indignation at being treated unfairly.\n• Fellowship: the #1 relapse risk if left untreated.\n• Clinical: a reinforcing thought‑emotion loop that narrows options.\n• Plain‑language: a hot coal you keep holding to throw later."},
+        {type:"disc",title:"Discuss",bullets:["What payoff keeps a resentment alive?","What boundary or amends would reduce it?","How do you discharge the energy without contact?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Which resentment drains you most?\nTry This: Write a 10‑minute letter you won’t send; then choose a boundary or repair you *will* do."}
+      ]},
+
+      /* ===== Added High-Impact Terms ===== */
+      {name:"Powerlessness",icon:"🪶",category:"spiritual",steps:[
+        {type:"q",title:"What does Powerlessness mean here?",text:"Powerless over what — substances, people, outcomes — and what does that make possible?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: admitting lack of control over addiction is the doorway to help.\n• Clinical: recognizing control illusions improves coping choices.\n• Plain‑language: stop trying to steer what you can’t; start steering what you can."},
+        {type:"disc",title:"Discuss",bullets:["Where do you keep grabbing the wheel?","What becomes possible after admitting powerlessness?","How do you pair powerlessness with responsibility?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What are you not the boss of today?\nTry This: Write two lists: ‘Not mine to control’ and ‘Mine to do next’ (pick one action)."}
+      ]},
+      {name:"Integrity",icon:"🧱",category:"skill",steps:[
+        {type:"q",title:"What is Integrity in recovery?",text:"Is it honesty, consistency, repairs — or all of the above?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: being whole and undivided; moral soundness.\n• Recovery: actions match values when no one is watching.\n• Plain‑language: same you, on‑stage and off‑stage."},
+        {type:"disc",title:"Discuss",bullets:["Where do your actions and values misalign?","What tiny habit would close the gap?","How does integrity rebuild trust over time?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What value wants proof today?\nTry This: One 5‑minute action that shows your value in public or private."}
+      ]},
+      {name:"Sponsor / Sponsorship",icon:"🧑‍🤝‍🧑",category:"process",steps:[
+        {type:"q",title:"What is a Sponsor?",text:"What do you want/need from a sponsor — and what do they need from you?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: peer guide who shares experience, strength, hope; helps work steps.\n• Clinical: accountability + modeling + attachment repair via safe relationship.\n• Plain‑language: a trail guide who’s hiked your route before."},
+        {type:"disc",title:"Discuss",bullets:["What qualities do you want in a sponsor?","How will you be sponsor‑able (reachable, honest, willing)?","What boundaries make sponsorship healthy?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What ask are you avoiding?\nTry This: Send one text/call to a potential sponsor or set a check‑in with yours."}
+      ]},
+      {name:"Serenity",icon:"🕊️",category:"spiritual",steps:[
+        {type:"q",title:"What is Serenity?",text:"Is serenity absence of problems or presence of peace within them?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: the calm that follows acceptance and action.\n• Clinical: regulated nervous system; skills to return to baseline.\n• Plain‑language: quiet inside, even if it’s loud outside."},
+        {type:"disc",title:"Discuss",bullets:["What destroys your serenity fastest?","What boundary or ritual protects it?","How does the Serenity Prayer guide choices?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What is today’s serenity priority?\nTry This: 3‑minute breathing or grounding ritual before a stressor."}
+      ]},
+      {name:"Forgiveness",icon:"🫧",category:"spiritual",steps:[
+        {type:"q",title:"What is Forgiveness (and what isn’t)?",text:"How do you define it without excusing harm?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: letting go of resentment/claim to punishment.\n• Recovery: release the hook so you stop bleeding energy.\n• Plain‑language: I stop carrying the debt — and still keep boundaries."},
+        {type:"disc",title:"Discuss",bullets:["Where would forgiveness free you most?","What’s the difference between forgiveness and reconciliation?","How can you forgive yourself while staying accountable?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What resentment is heavy today?\nTry This: Write a forgiveness statement + one protective boundary."}
+      ]},
+      {name:"Resilience",icon:"🌿",category:"skill",steps:[
+        {type:"q",title:"What is Resilience?",text:"Is it bouncing back, bouncing forward, or both?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Psychology: adapting well in the face of adversity.\n• Recovery: skills + supports + meaning that reduce relapse risk.\n• Plain‑language: keep going, a little stronger each time."},
+        {type:"disc",title:"Discuss",bullets:["What past proof shows your resilience?","Which support(s) boost it most?","How do you practice recovery aftercare when feeling ‘fine’?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What resilience muscle needs reps?\nTry This: Schedule one protective routine (sleep, food, movement, connection) for 7 days."}
+      ]},
+      {name:"Humility",icon:"🪨",category:"spiritual",steps:[
+        {type:"q",title:"What is Humility?",text:"How is humility different from humiliation?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Dictionary: a modest view of one’s importance.\n• Recovery: right‑sizing the ego so help can get in.\n• Plain‑language: I’m not less than or more than — I’m human and in progress."},
+        {type:"disc",title:"Discuss",bullets:["Where does pride block your recovery?","Who models humble strength well?","What feedback are you willing to hear this week?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What would humble action look like today?\nTry This: Ask for one piece of feedback and write your takeaway."}
+      ]},
+      {name:"Spiritual Awakening",icon:"🌤️",category:"spiritual",steps:[
+        {type:"q",title:"What is a Spiritual Awakening?",text:"How would you know you’re experiencing one?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: a shift in perspective as the result of working steps.\n• Personal: increased honesty, service, and peace.\n• Plain‑language: seeing life with new eyes — and living like it."},
+        {type:"disc",title:"Discuss",bullets:["What small awakenings have you noticed?","How do you keep growth from becoming grandiosity?","What practices keep you spiritually awake?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Where are you being nudged to grow?\nTry This: Do one simple service act anonymously."}
+      ]},
+      {name:"Fellowship",icon:"🤝",category:"process",steps:[
+        {type:"q",title:"What is Fellowship?",text:"What do you receive from community that you can’t get alone?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Fellowship: shared experience, strength, and hope; belonging that heals isolation.\n• Clinical: social recovery capital that predicts sustained change.\n• Plain‑language: people who ‘get it’ and walk with you."},
+        {type:"disc",title:"Discuss",bullets:["What do you need from fellowship right now?","How will you contribute (service, sharing, welcoming)?","What boundary keeps fellowship healthy for you?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: Where can you lean on people more?\nTry This: Commit to one extra meeting or peer call this week."}
+      ]},
+      {name:"Neuroplasticity",icon:"🧠",category:"clinical",steps:[
+        {type:"q",title:"What is Neuroplasticity doing for you?",text:"How does ‘the brain can change’ shape your hope and habits?"},
+        {type:"def",title:"Multi‑angle definition",text:"• Neuroscience: the brain’s capacity to reorganize with new learning.\n• Recovery: repeated skills and supports rewire cues and responses.\n• Plain‑language: what you practice, you wire."},
+        {type:"disc",title:"Discuss",bullets:["What habit loop are you retraining?","Which cue→new response will you rehearse?","How will you measure small brain‑change wins?" ]},
+        {type:"wrap",title:"Wrap‑Up & Try This",text:"Reflection: What one micro‑practice do you want to install?\nTry This: 1‑minute daily rep (same time/place) for the next 7 days."}
+      ]}
+    ];
+
+    // ----- STATE & RENDERING -----
+    let filtered = [...TERMS];
+    let activeIndex = -1; let step = 0;
+    const listEl = document.getElementById('list');
+    const countEl = document.getElementById('count');
+    const searchEl = document.getElementById('search');
+    const categoryEl = document.getElementById('category');
+    const shuffleEl = document.getElementById('shuffle');
+    const cardEl = document.getElementById('card');
+    const crumbCat = document.getElementById('crumbCat');
+    const crumbName = document.getElementById('crumbName');
+    const stepLabel = document.getElementById('stepLabel');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+
+    function tagLabel(cat){ return ({spiritual:'Spiritual',skill:'Skills',process:'Process',clinical:'Clinical'})[cat]||''; }
+
+    function renderList(){
+      listEl.innerHTML='';
+      filtered.forEach((t,i)=>{
+        const row=document.createElement('div');
+        row.className='term'+(i===activeIndex?' active':'');
+        row.onclick=()=>selectTerm(i);
+        row.innerHTML = '<div class="icon">'+t.icon+'</div><div class="name">'+t.name+'</div><div class="tag muted">'+tagLabel(t.category)+'</div>';
+        listEl.appendChild(row);
+      });
+      countEl.textContent=`${filtered.length} terms`;
+    }
+
+    function selectTerm(i){ activeIndex=i; step=0; renderList(); renderStage(); prevBtn.disabled=true; nextBtn.disabled=false; }
+
+    function renderStage(){
+      if(activeIndex<0) return;
+      const t=filtered[activeIndex]; const s=t.steps[step];
+      crumbCat.textContent=tagLabel(t.category); crumbName.textContent=t.name; stepLabel.textContent=`Step ${step+1}/4`;
+      cardEl.innerHTML='';
+      const h2=document.createElement('h2'); h2.textContent=`${t.icon} ${s.title}`;
+      const p=document.createElement('p');
+      if(s.type==='disc'){
+        const ul=document.createElement('div'); ul.className='bullets';
+        s.bullets.forEach(b=>{ const li=document.createElement('li'); li.textContent=b; ul.appendChild(li); });
+        p.className='muted'; p.textContent='Discuss as a group or pick one prompt to journal for 2 minutes.';
+        cardEl.append(h2, ul, p);
+      } else {
+        p.textContent=s.text; cardEl.append(h2,p);
+        if(s.type==='def'){ const small=document.createElement('p'); small.className='muted'; small.textContent='Tip: invite multiple angles so different brains can hook in.'; cardEl.appendChild(small); }
+      }
+    }
+
+    function next(){ if(activeIndex<0) return; step=Math.min(3, step+1); renderStage(); prevBtn.disabled=(step===0); nextBtn.disabled=(step===3); }
+    function prev(){ if(activeIndex<0) return; step=Math.max(0, step-1); renderStage(); prevBtn.disabled=(step===0); nextBtn.disabled=(step===3); }
+
+    function applyFilters(){
+      const q=searchEl.value.trim().toLowerCase(); const cat=categoryEl.value;
+      filtered = TERMS.filter(t=>{
+        const hit = t.name.toLowerCase().includes(q) || t.steps.some(s => (s.text||'').toLowerCase().includes(q));
+        const catOk = (cat==='all') || (t.category===cat);
+        return hit && catOk;
+      });
+      activeIndex = filtered.length? 0 : -1; step=0; renderList();
+      if(activeIndex>=0){ renderStage(); prevBtn.disabled=true; nextBtn.disabled=false; }
+      else { cardEl.innerHTML='<h2>Nothing found</h2><p class="muted">Try a different search or clear filters.</p>'; crumbCat.textContent='–'; crumbName.textContent='No match'; stepLabel.textContent='—'; prevBtn.disabled=true; nextBtn.disabled=true; }
+    }
+
+    function shuffle(){
+      for(let i=filtered.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [filtered[i],filtered[j]]=[filtered[j],filtered[i]]; }
+      activeIndex = filtered.length? 0 : -1; step=0; renderList(); if(activeIndex>=0){ renderStage(); prevBtn.disabled=true; nextBtn.disabled=false; }
+    }
+
+    window.addEventListener('keydown', (e)=>{
+      if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+      if(e.key==='ArrowRight') next();
+      if(e.key==='ArrowLeft') prev();
+      if(e.key==='ArrowUp' && activeIndex>0) selectTerm(activeIndex-1);
+      if(e.key==='ArrowDown' && activeIndex<filtered.length-1) selectTerm(activeIndex+1);
+    });
+
+    searchEl.addEventListener('input', applyFilters);
+    categoryEl.addEventListener('change', applyFilters);
+    shuffleEl.addEventListener('click', shuffle);
+    nextBtn.addEventListener('click', next);
+    prevBtn.addEventListener('click', prev);
+
+    renderList();
+  </script>
+</body>
+</html>
